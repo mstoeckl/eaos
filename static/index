@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EAOS</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/theme.css">
+</head>
+
+<body>
+<h1>Electronic Action Oriented Scouting</h1>
+
+<p><a href="/config"> Configuration page
+<h2><a href="/input"> Input</a></h2>
+<div><a href="/input/schedule"> Schedule Input </a></div>
+<div><a href="/input/match"> Match Score Input </a></div>
+<div><a href="/input/pits"> Pit Scouting Input </a></div>
+<div><a href="/input/actions"> Detail Scouting Input </a></div>
+
+<h2><a href="/view"> View</a></h2>
+<div><a href="/view/match"> Select a match to view </a></div>
+<div><a href="/view/match/19"> View match information </a></div>
+<div><a href="/view/robot"> Select a robot to view </a></div>
+<div><a href="/view/robot/1511"> View robot information </a></div>
+<div><a href="/view/stats"> General statistics </a></div>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+<html>
+<head>
+<link rel="stylesheet" href="/theme.css">
+<meta>
+
+<body>
+<title>Configuration</title>
+
+<p>
+Hello! Welcome to our friendly configuration page.
+
+</p>
+
+<table>
+  <tr>
+    <td>Process ID</td>
+    <td>
+    {{ pid }}
+    </td>
+  </tr>
+</table>
+
+
+</body>
+<html>
