@@ -1,13 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>EAOS</title>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="/theme.css">
-</head>
+{% extends "../templates/base.html" %}
 
-<body>
+{% block title %} Index {% end %}
+
+{% block header %}
+
 <h1>Electronic Action Oriented Scouting</h1>
+
+{% end %}
+
+{% block body %}
 
 <p><a href="/config"> Configuration page
 <h2><a href="/input"> Input</a></h2>
@@ -23,5 +24,4 @@
 <div><a href="/view/robot/1511"> View robot information </a></div>
 <div><a href="/view/stats"> General statistics </a></div>
 
-</body>
-</html>
+{% end %}

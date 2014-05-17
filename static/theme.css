@@ -6,3 +6,9 @@ table{
    background-color: #F0F0F0;
    text-align: center;
 }
+
+hr{
+    height:1px;
+    width:80%;
+    color:#eee;
+}

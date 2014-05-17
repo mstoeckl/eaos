@@ -1,25 +1,18 @@
-<html>
-<head>
-<link rel="stylesheet" href="/theme.css">
-<meta>
+{% extends "../templates/base.html" %}
 
-<body>
-<title>Configuration</title>
+{% block title %} Configuration page {% end %}
 
-<p>
-Hello! Welcome to our friendly configuration page.
+{% block header %}
 
-</p>
+<h1>Configuration</h1>
 
-<table>
-  <tr>
-    <td>Process ID</td>
-    <td>
-    {{ pid }}
-    </td>
-  </tr>
-</table>
+{% end %}
 
+{% block body %}
 
-</body>
-<html>
+Nothing to configure yet.
+<br/>
+TODO: create a field that is mirrored across
+all open configure pages.
+
+{% end %}
