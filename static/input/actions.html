@@ -1,0 +1,75 @@
+{% extends "../base.html" %}
+
+{% block title %} Input schedule {% end %}
+
+{% block body %}
+<p><input id="match_num" type="number" min=1 max=200 value=1/></p>
+<table>
+<tr>
+<td>Alliance</td>
+<td>Team</td>
+<td>Actions</td>
+<td>Scouter</td>
+</tr>
+{% for i in range(6) %}
+<tr>
+{% if i==0 %}
+<td rowspan=3>Red</td>
+{% elif i==3 %}
+<td rowspan=3>Blue</td>
+{% end %}
+<td id="team-{{i}}">{{engine.data.get_actions_team(1, i)}}</td>
+<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions_actions(1, i)}}"/></td>
+<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_actions_scouter(1, i)}}"/></td>
+</tr>
+{% end %}
+</table>
+
+<script>
+function repull(id, prev, next) {
+    unpull(id + "-" + prev);
+    pull(id+ "-" + next, function (value) {
+        var elem = document.getElementById(id);
+        switch (elem.tagName) {
+        case "TD":
+            elem.innerHTML = value;
+            break;
+        case "INPUT":
+            elem.value = value;
+            break;
+        }
+    });
+}
+
+function setPushByID(en, c) {
+    var e = document.getElementById(en);
+    e.onchange = function() {
+        push(en+"-"+c,e.value);
+    };
+}
+
+var e = document.getElementById("match_num");
+var last = e.value;
+e.onchange = function() {
+    var num = e.value;
+    if (!num) {
+        return;
+    }
+
+    for (var i=0;i<6;i++) {
+        repull("team-" + i, last, num);
+        repull("actions-" + i, last, num);
+        repull("scouter-" + i, last, num);
+        setPushByID("actions-" + i, num);
+        setPushByID("scouter-" + i, num);
+    }
+
+    last = num;
+    push("match_num", num)
+}
+e.onchange();
+
+</script>
+
+
+{% end %}

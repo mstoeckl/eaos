@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %} Configuration page {% end %}
+
+{% block body %}
+
+<p>
+Nothing to configure yet.
+</p>
+
+<input type="text" class="crosslink" name="longterm" placeholder="Type Here!" value="{{engine.config.moo}}"/>
+
+<p class="crosslink" name="shortterm">{{" ".join([engine.config.moo] * 3)}}</p>
+
+{% end %}

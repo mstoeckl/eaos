@@ -1,100 +1,120 @@
 #!/usr/bin/env python3
 
+import os
 from tornado.options import options, define, parse_command_line
 from tornado import web, websocket
 import tornado.ioloop
 import tornado.httpserver
-import os
 from collections import defaultdict
+from engine import Engine
 
 define("port", type=int, default=8888)
+define("datadir", type=str, default="data")
 
-template_context = {"pid":os.getpid()}
+template_context = {"pid": os.getpid()}
 
-class ConfigHandler(web.RequestHandler):
-    def get(self):
-        self.render("static/config", pid=os.getpid())
+pass_map = {
+    "config",
+    "input/schedule",
+    "input/match",
+    "input/pits",
+    "input/actions",
+    "view/match",
+    "view/robot",
+    "view/stats"
+}
 
-class StaticTemplateHandler(web.RequestHandler):
+re_map = {
+    "": "index",
+    "view": "view/index",
+    "input": "input/index",
+}
+
+
+class TemplateHandler(web.RequestHandler):
     def get(self, path):
-        # check real file name:
-        # if folder, use 1
-        # if js, use other
-        print(path)
-        self.render("static/index".format(path), **template_context)
+        if path in pass_map:
+            real = path
+        else:
+            try:
+                real = re_map[path]
+            except KeyError:
+                raise web.HTTPError(404)
 
-class ReceiveHandler(web.RequestHandler):
-    def post(self):
-        key = self.get_argument("key", "???")
-        value = self.get_argument("value", "???")
-        print(key, "=>", value)
+        self.render("static/{}.html".format(real), **template_context)
 
-# todo: convert into engine
-pagelist = defaultdict(list)
-
-class Interface():
-    def __init__(self, push):
-        self.push = push
-        # default callback is echo
-        self.callback = lambda x:self.push(x[0],x[1])
-    def pull(self,callback):
-        self.callback = callback
 
 class SocketHandler(websocket.WebSocketHandler):
-    path = None
-    interface = None
+    """
+    Passes incoming messages to the engine, and
+    echos them back to all source page types
+
+    Sends messages from the engine out to pages.
+    """
+    connections = defaultdict(list)
+    engine = None
+
+    def __init__(self, *a, **b):
+        self.path = None
+        super().__init__(*a, **b)
+
     def write_pair(self, key, val):
         self.write_message("{}={}".format(key, val))
+
     def on_message(self, message):
-        print(message)
         if self.path is None:
             self.path = message
-            self.interface = Interface(self.write_pair)
-            pagelist[self.path].append(self.interface)
+            SocketHandler.connections[self.path].append(self)
         else:
-            for x in pagelist[self.path]:
-                x.callback(message.split("="))
+            k, v = message.split("=")
+            SocketHandler.send(self.path, k, v)
+            SocketHandler.engine.receive(self.path, k, v)
 
     def on_close(self):
-        pagelist[self.path].remove(self.interface)
-    def open(self):
-        pass
+        SocketHandler.connections[self.path].remove(self)
+
+    @staticmethod
+    def send(page, key, val):
+        if page in SocketHandler.connections:
+            for x in SocketHandler.connections[page]:
+                x.write_pair(key, val)
 
 def main():
-    parse_command_line()
-    app = web.Application(
-    [
+    engine = Engine(options.datadir, SocketHandler.send)
+    template_context["engine"] = engine
+    SocketHandler.engine = engine
+
+    app = web.Application([
         ("/socket", SocketHandler),
-
-
-
-        ("/config", ConfigHandler),
-        ("/push", ReceiveHandler),
-        ("/index", web.ErrorHandler, {"status_code":404}),
-        ("/()", StaticTemplateHandler),
-        ("/view()", web.StaticFileHandler, {"path":"static/view/index"}),
-        ("/input()", web.StaticFileHandler, {"path":"static/input/index"}),
-
-
-        ("/(.*)", web.StaticFileHandler,  {"path": "static"})
-    ])
+        ("/(.*\.js)", web.StaticFileHandler,  {"path": "static"}),
+        ("/(.*\.css)", web.StaticFileHandler,  {"path": "static"}),
+        ("/(.*)", TemplateHandler)
+    ], autoescape=None)
     server = tornado.httpserver.HTTPServer(app)
     server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
 
 
-
 if __name__ == "__main__":
-    import time,signal
+    parse_command_line()
+
+    import time
+    import signal
+
     class SingletonScript():
+        # a slightly cleaner solution:
+        # have all processes rename themselves...
         it = "pid.txt"
+
         def __enter__(self):
+            # go to python script location
             if os.path.exists(self.it):
                 old_pid = int(open(self.it).read())
                 #os.kill(old_pid,signal.SIGINT) # does not work??
                 os.system("kill -2 {}".format(old_pid))
-            open(self.it,"w").write(str(os.getpid()))
+            open(self.it, "w").write(str(os.getpid()))
             time.sleep(0.5)
+
         def __exit__(self, _, __, ___):
             os.remove(self.it)
 
@@ -103,4 +123,3 @@ if __name__ == "__main__":
             main()
     except KeyboardInterrupt:
         pass
-

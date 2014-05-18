@@ -1,6 +1,6 @@
 "use strict"
 
-alert = (function _() {
+alert = (function () {
     var pushqueue = [];
     var available = false;
     var pulls = {}
@@ -33,5 +33,9 @@ alert = (function _() {
         pulls[key] = callback;
     }
 
-    return alert
+    window.unpull = function unpull(key) {
+        delete pulls[key];
+    }
+
+    return alert;
 }).call()

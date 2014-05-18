@@ -1,0 +1,22 @@
+{% extends "../base.html" %}
+
+{% block title %} Input schedule {% end %}
+
+{% block body %}
+
+<p><button class="crosslink" name="csv_reset">
+Clear and Reset Schedule </button></p>
+
+<p><textarea class="crosslink" name="csv_entry" autofocus>
+{{engine.data.schedule_raw}}
+</textarea></p>
+
+<br/>
+
+<table class="crosslink" name="csv_table">
+{{ engine.data.schedule_table }}
+</table>
+
+
+
+{% end %}
