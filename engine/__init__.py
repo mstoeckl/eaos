@@ -244,6 +244,7 @@ class Engine():
         Output: object with a .(page, key, val) method
         """
         self.path = path
+        os.makedirs(self.path, exist_ok=True)
         self.config = Config(path+"/config")
         self.output = output
         self.data = Store(path)
