@@ -3,7 +3,12 @@
 {% block title %} Input schedule {% end %}
 
 {% block body %}
-<p><input id="match_num" type="number" min=1 max=200 value=1/></p>
+
+<p><select id="match_num">
+    <option selected="selected" value=" ">- None -</option>
+    {{engine.data.matchoptions()}}
+</select></p>
+
 <table>
 <tr>
 <td>Alliance</td>
@@ -18,9 +23,9 @@
 {% elif i==3 %}
 <td rowspan=3>Blue</td>
 {% end %}
-<td id="team-{{i}}">{{engine.data.get_actions_team(1, i)}}</td>
-<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions_actions(1, i)}}"/></td>
-<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_actions_scouter(1, i)}}"/></td>
+<td id="team-{{i}}">{{engine.data.get_actions_team("", i)}}</td>
+<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions_actions("", i)}}"/></td>
+<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_actions_scouter("", i)}}"/></td>
 </tr>
 {% end %}
 </table>
@@ -52,9 +57,6 @@ var e = document.getElementById("match_num");
 var last = e.value;
 e.onchange = function() {
     var num = e.value;
-    if (!num) {
-        return;
-    }
 
     for (var i=0;i<6;i++) {
         repull("team-" + i, last, num);
@@ -65,8 +67,18 @@ e.onchange = function() {
     }
 
     last = num;
-    push("match_num", num)
+    push("match_num", num);
 }
+
+pull("match_list", function(v) {
+    var old = e.value;
+    var u = e.onchange;
+    e.innerHTML = "<option value=\" \">- None -</option>"+v;
+    e.value = old;
+    e.onchange = u;
+    e.onchange();
+});
+
 e.onchange();
 
 </script>

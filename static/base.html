@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>EAOS: {% block title %}Default title{% end %}</title>
+    <title>{% block title %}Default title{% end %}</title>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/theme.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
     <script src="/js/pushpull.js"></script>
   </head>
-  <body>
+  <body class="body-prelinked">
 
   <h1>
+  <a href="/" class="headerlink">
   {% block title %}
   Title
   {% end %}
+  </a>
   </h1>
 
   <hr/>
@@ -20,7 +23,6 @@
     Filler
   {% end %}
   <footer>
-    <br/>
     <br/>
     <hr/>
     <br/>
@@ -32,7 +34,6 @@
         </td>
       </tr>
     </table>
-    <a href="/">Index</a>
   </footer>
   <script src="/js/auto.js"></script>
   </body>

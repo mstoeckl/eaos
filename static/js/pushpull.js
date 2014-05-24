@@ -12,12 +12,20 @@ alert = (function () {
             socket.send(pushqueue.pop())
         }
         available = true;
+        document.body.className = "body-linked";
     }
     socket.onmessage = function(e) {
         var d = e.data.split("=");
         if (d[0] in pulls) {
             pulls[d[0]](d[1]);
         }
+    }
+    socket.onclose = function(e) {
+        // a slight delay so the js does not take
+        // effect as another page loads
+        setTimeout(function() {
+            document.body.className = "body-unlinked";
+        }, 2000);
     }
 
     window.push = function push(key, value) {

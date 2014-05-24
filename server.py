@@ -10,6 +10,7 @@ from engine import Engine
 
 define("port", type=int, default=8888)
 define("datadir", type=str, default="data")
+define("loud", type=bool, default=False)
 
 template_context = {"pid": os.getpid()}
 
@@ -66,15 +67,20 @@ class SocketHandler(websocket.WebSocketHandler):
             self.path = message
             SocketHandler.connections[self.path].append(self)
         else:
-            k, v = message.split("=")
-            SocketHandler.send(self.path, k, v)
-            SocketHandler.engine.receive(self.path, k, v)
+            key, val = message.split("=")
+            SocketHandler.send(self.path, key, val)
+            if options.loud:
+                print("\033[1;35m[Pull]\033[0m Page \"{}\"; Key \"{}\"; Value \"{}\"".format(self.path,key,val))
+            SocketHandler.engine.receive(self.path, key, val)
 
     def on_close(self):
         SocketHandler.connections[self.path].remove(self)
 
     @staticmethod
     def send(page, key, val):
+        if options.loud:
+            print("\033[1;33m[Push]\033[0m Page \"{}\"; Key \"{}\"; Value \"{}\"".format(page,key,val))
+
         if page in SocketHandler.connections:
             for x in SocketHandler.connections[page]:
                 x.write_pair(key, val)
@@ -86,6 +92,7 @@ def main():
 
     app = web.Application([
         ("/socket", SocketHandler),
+        ("/(favicon.ico)", web.StaticFileHandler,  {"path": "static"}),
         ("/(.*\.js)", web.StaticFileHandler,  {"path": "static"}),
         ("/(.*\.css)", web.StaticFileHandler,  {"path": "static"}),
         ("/(.*)", TemplateHandler)

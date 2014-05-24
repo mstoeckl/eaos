@@ -1,0 +1,98 @@
+{% extends "../base.html" %}
+{% block title %} Input Match Results {% end %}
+{% block body %}
+
+<table id="table">
+<tr>
+    <td>Match #</td>
+    <td>Red Tele</td>
+    <td>Red Auto</td>
+    <td>Red Foul</td>
+    <td>Blue Tele</td>
+    <td>Blue Auto</td>
+    <td>Blue Foul</td>
+</tr>
+    {% for match in engine.data.matchlist() %}
+        <tr id="row-{{match}}">
+        <td>{{match}}</td>
+        <td><input type="number" id="RedTele-{{match}}" value="{{engine.data.get_red_tele_score(match)}}"/></td>
+        <td><input type="number" id="RedAuto-{{match}}" value="{{engine.data.get_red_auto_score(match)}}"/></td>
+        <td><input type="number" id="RedFoul-{{match}}" value="{{engine.data.get_red_foul_score(match)}}"/></td>
+        <td><input type="number" id="BlueTele-{{match}}" value="{{engine.data.get_blue_tele_score(match)}}"/></td>
+        <td><input type="number" id="BlueAuto-{{match}}" value="{{engine.data.get_blue_auto_score(match)}}"/></td>
+        <td><input type="number" id="BlueFoul-{{match}}" value="{{engine.data.get_blue_foul_score(match)}}"/></td>
+        </tr>
+    {% end %}
+</table>
+
+<script>
+
+"use strict"
+
+var matches = [];
+const prefixes = ["RedTele","RedAuto","RedFoul","BlueTele","BlueAuto","BlueFoul"];
+
+function wipepull(match) {
+    for (var i=0;i<prefixes.length;i++) {
+        unpull(prefixes[i] + "-" + match);
+    }
+    var e = document.getElementById("row-" + match);
+    e.parentNode.removeChild(e);
+
+}
+function initpull(ix) {
+    var id = ix;
+    var e = document.getElementById(id);
+    e.onchange = function() {
+        push(id, e.value);
+    }
+    pull(id, function(v) {
+        e.value = v;
+    });
+}
+function setpull(match) {
+    matches.push(match);
+
+    for (var i=0;i<prefixes.length;i++) {
+        initpull(prefixes[i] + "-" +match);
+    }
+}
+
+{% for match in engine.data.matchlist() %}
+    setpull("{{match}}")
+{% end %}
+
+function writerows(matches) {
+    var table = document.getElementById("table");
+    for (var i=0;i<matches.length;i++) {
+        var match = matches[i];
+        table.innerHTML += '<tr id="row-'+match+'"><td>'+match+'</td></tr>'
+        var row = document.getElementById("row-"+match);
+        for (var j=0;j<prefixes.length;j++) {
+            row.innerHTML += '<td><input type="number" id="'+prefixes[j]+'-'+match+'" value="0"/></td>';
+        }
+    }
+}
+
+pull("match_list", function (val) {
+    // wipe old stuffs
+    while (matches.length > 0) {
+        wipepull(matches.pop());
+    }
+
+    var next = JSON.parse(val);
+
+    writerows(next);
+
+    for (var i=0;i<next.length;i++) {
+        setpull(next[i]);
+    }
+    push("request_scores","");
+});
+
+push("request_scores","");
+
+</script>
+
+
+{% end %}

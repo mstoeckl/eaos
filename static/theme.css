@@ -1,10 +1,15 @@
 @charset "utf-8";
 
 table{
-   border: .1em solid blue;
+   border: .1em;
    border-radius: .3em;
    background-color: #F0F0F0;
    text-align: center;
+}
+
+td{
+    border: 1px #D0D0D0;
+    border-style:double;
 }
 
 hr{
@@ -17,4 +22,34 @@ textarea{
     width:500px;
     height:300px;
     resize:both;
+}
+
+.headerlink{
+    text-decoration: none;
+    text-shadow: 0 0 3px #FFFFFF,
+    0 0 3px #FFFFFF,
+    0 0 3px #FFFFFF,
+    0 0 3px #FFFFFF,
+    0 0 3px #FFFFFF;
+}
+
+.headerlink:link {
+    color: #004422;
+}
+
+.headerlink:visited {
+    color: #004422;
+}
+
+.body-prelinked {
+    background-color: #FFFFFF;
+}
+
+
+.body-linked {
+    background-color: #FFFFFF;
+}
+
+.body-unlinked {
+    background-color: #111111;
 }
