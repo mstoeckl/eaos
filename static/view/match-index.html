@@ -1,0 +1,40 @@
+{% extends "../base.html" %}
+{% block title %} Match index! {% end %}
+{% block body %}
+
+<p>
+Match index: links from here to the matches.
+</p>
+
+<div id="list">
+{% for match in engine.data.matchlist() %}
+
+<div><a href="/view/match/{{match}}">{{match}}</a></div>
+
+{% end %}
+
+</div>
+
+<script>
+
+"use strict"
+
+pull("match_list", function(e) {
+    var list = JSON.parse(e);
+    var par = document.getElementById("list");
+
+    par.innerHTML = "";
+    for (var i=0;i<list.length;i++) {
+        var div = document.createElement("div");
+        var link = document.createElement("a");
+        link.href = "/view/match/" + list[i];
+        link.innerHTML = list[i];
+        div.appendChild(link);
+        par.appendChild(div);
+    }
+})
+
+</script>
+
+
+{% end %}

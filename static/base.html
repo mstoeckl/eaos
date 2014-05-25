@@ -3,9 +3,9 @@
   <head>
     <title>{% block title %}Default title{% end %}</title>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="/theme.css">
+    {{ accel.stylesheet }}
     <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-    <script src="/js/pushpull.js"></script>
+    {{ accel.pushpull }}
   </head>
   <body class="body-prelinked">
 
@@ -35,6 +35,6 @@
       </tr>
     </table>
   </footer>
-  <script src="/js/auto.js"></script>
+  {{ accel.auto }}
   </body>
 </html>

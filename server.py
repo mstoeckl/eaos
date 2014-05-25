@@ -11,6 +11,9 @@ from engine import Engine
 define("port", type=int, default=8888)
 define("datadir", type=str, default="data")
 define("loud", type=bool, default=False)
+define("lump", type=bool, default=False)
+define("dead", type=bool, default=False)
+define("year", type=int, default=2014)
 
 template_context = {"pid": os.getpid()}
 
@@ -20,9 +23,12 @@ pass_map = {
     "input/match",
     "input/pits",
     "input/actions",
-    "view/match",
-    "view/robot",
     "view/stats"
+}
+
+number_pages = {
+    "view/match",
+    "view/robot"
 }
 
 re_map = {
@@ -34,6 +40,17 @@ re_map = {
 
 class TemplateHandler(web.RequestHandler):
     def get(self, path):
+        self.set_header("Cache-control", "no-store, no-cache, must-revalidate, max-age=0")
+        for key in number_pages:
+            if path == key:
+                self.render("static/{}-index.html".format(path), **template_context)
+            if path.startswith(key+"/"):
+                u = path.lstrip(key+"/")
+                if SocketHandler.engine.page_exists("/"+key, u):
+                    self.render("static/{}.html".format(key), page=u, **template_context)
+                    return
+                raise web.HTTPError(404)
+
         if path in pass_map:
             real = path
         else:
@@ -85,16 +102,46 @@ class SocketHandler(websocket.WebSocketHandler):
             for x in SocketHandler.connections[page]:
                 x.write_pair(key, val)
 
+class Accelerator():
+    def __init__(self, lump, dead):
+        if dead:
+            self.none()
+        else:
+            if lump:
+                self.lumped()
+            else:
+                self.split()
+    def split(self):
+        self.stylesheet = "<link rel='stylesheet' href='/theme.css'>"
+        self.pushpull = "<script src='/js/pushpull.js'></script>"
+        self.auto = "<script src='/js/auto.js'></script>"
+    def open(self, path):
+        with open("static"+path) as f:
+            return f.read()
+    def taglock(self, tag, path):
+        return "<{0}>{1}</{0}>".format(tag, self.open(path))
+    def lumped(self):
+        self.stylesheet = self.taglock("style","/theme.css")
+        self.pushpull = self.taglock("script","/js/pushpull.js")
+        self.auto = self.taglock("script","/js/auto.js")
+    def none(self):
+        self.stylesheet = ""
+        self.pushpull = "<script>push=pull=unpull=function(){}</script>"
+        self.auto = ""
+
+
+
 def main():
-    engine = Engine(options.datadir, SocketHandler.send)
+    engine = Engine(options.year, options.datadir, SocketHandler.send)
     template_context["engine"] = engine
     SocketHandler.engine = engine
+    template_context["accel"] = Accelerator(options.lump, options.dead)
 
     app = web.Application([
         ("/socket", SocketHandler),
         ("/(favicon.ico)", web.StaticFileHandler,  {"path": "static"}),
         ("/(.*\.js)", web.StaticFileHandler,  {"path": "static"}),
-        ("/(.*\.css)", web.StaticFileHandler,  {"path": "static"}),
+        ("/(theme.css)", web.StaticFileHandler,  {"path": "static"}),
         ("/(.*)", TemplateHandler)
     ], autoescape=None)
     server = tornado.httpserver.HTTPServer(app)

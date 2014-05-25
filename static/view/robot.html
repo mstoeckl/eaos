@@ -1,0 +1,77 @@
+{% extends "../base.html" %}
+{% block title %} View Robot: {{page}} {% end %}
+{% block body %}
+
+<h3> Matches </h3>
+
+<table id="matches">
+<tr>
+<td>Match</td>
+<!-- These are year-specific details. Do a year-load? -->
+
+{% set tdify = lambda u: engine.surround_list(u, "td") %}
+
+{{ tdify(engine.year.get_robot_match_header()) }}
+
+</tr>
+
+{% for match in engine.data.get_matches(page) %}
+<tr>
+<td><a href="/view/match/{{match}}">{{match}}</a></td>
+
+{{ tdify(engine.year.get_robot_match_results(page, match)) }}
+
+</tr>
+{% end %}
+</table>
+
+<script>
+
+// probably the heaviest site of the page:
+// load stats, images, etc...
+
+"use strict"
+
+pull("update_matches", function (e) {
+    var arr = JSON.parse(e);
+    var table = document.getElementById("matches");
+    table.innerHTML = "";
+    console.log(arr);
+
+    // basically rebuilding the table
+
+    for (var y=0;y<arr.length;y++) {
+        var row = arr[y];
+        var rn = document.createElement("tr");
+
+        var blk = document.createElement("td");
+        if (y === 0) {
+            blk.innerHTML = row[0];
+        } else {
+            var lnk = document.createElement("a");
+            lnk.innerHTML = row[0];
+            lnk.href="/view/match/"+row[0];
+            blk.appendChild(lnk);
+        }
+        rn.appendChild(blk);
+
+
+        for (var x=1;x<row.length;x++) {
+            var blk = document.createElement("td");
+            blk.innerHTML = row[x];
+            rn.appendChild(blk);
+        }
+        table.appendChild(rn);
+    }
+
+
+});
+
+pull("destroy", function (e) {
+    window.location.pathname = "/view/robot";
+});
+
+</script>
+
+
+{% end %}

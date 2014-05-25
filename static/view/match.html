@@ -1,0 +1,65 @@
+{% extends "../base.html" %}
+{% block title %} View Match: {{page}} {% end %}
+{% block body %}
+
+{% for term in ("Red","Blue") %}
+
+<h3>{{term}} Alliance</h3>
+
+<h4> Teams </h4>
+
+<table><tr>
+<td>Team 1</td>
+<td>Team 2</td>
+<td>Team 3</td>
+</tr><tr>
+{% set robot = lambda x: engine.data.get_robot(page, term, x) %}
+<td><a id="{{term}}_r1" href="/view/robot/{{robot(1)}}">{{robot(1)}}</a></td>
+<td><a id="{{term}}_r2" href="/view/robot/{{robot(2)}}">{{robot(2)}}</a></td>
+<td><a id="{{term}}_r3" href="/view/robot/{{robot(3)}}">{{robot(3)}}</a></td>
+</tr></table>
+
+<h4> Score </h4>
+
+<table><tr>
+<td>Total</td>
+<td>Auto</td>
+<td>Teleop</td>
+<td>Foul</td>
+</tr><tr>
+<td class="crosslink" name="{{term}}_score_total">{{engine.data.get_total_score(page, term)}}</td>
+<td class="crosslink" name="{{term}}Auto">{{engine.data.get_score(page, term+"Auto")}}</td>
+<td class="crosslink" name="{{term}}Tele">{{engine.data.get_score(page, term+"Tele")}}</td>
+<td class="crosslink" name="{{term}}Foul">{{engine.data.get_score(page, term+"Foul")}}</td>
+</tr></table>
+
+
+{% end %}
+
+<script>
+
+"use strict"
+
+function link(name) {
+    var e = document.getElementById(name);
+    pull(name, function(robot) {
+        e.innerHTML = robot
+        e.href = "/view/robot/" + robot
+    });
+}
+
+var terms = ["Red","Blue"];
+for (var i=0;i<terms.length;i++) {
+    link(terms[i] + "_r1");
+    link(terms[i] + "_r2");
+    link(terms[i] + "_r3");
+}
+
+pull("destroy", function (e) {
+    window.location.pathname = "/view/match";
+});
+
+</script>
+
+
+{% end %}

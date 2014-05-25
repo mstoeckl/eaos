@@ -1,0 +1,43 @@
+{% extends "../base.html" %}
+{% block title %} Robot index! {% end %}
+{% block body %}
+
+<p>
+Robot index: links from here to the bots.
+</p>
+
+
+<div id="list">
+{% for robot in engine.data.robotlist() %}
+
+<div><a href="/view/robot/{{robot}}">{{robot}}</a></div>
+
+{% end %}
+</div>
+
+<script>
+
+"use strict"
+
+// TODO: build a helper function for this
+// and the match list
+
+pull("robot_list", function(e) {
+    var list = JSON.parse(e);
+    var par = document.getElementById("list");
+
+    par.innerHTML = "";
+    for (var i=0;i<list.length;i++) {
+        var div = document.createElement("div");
+        var link = document.createElement("a");
+        link.href = "/view/robot/" + list[i];
+        link.innerHTML = list[i];
+        div.appendChild(link);
+        par.appendChild(div);
+    }
+})
+
+</script>
+
+
+{% end %}

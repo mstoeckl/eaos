@@ -70,7 +70,7 @@ e.onchange = function() {
     push("match_num", num);
 }
 
-pull("match_list", function(v) {
+pull("match_options", function(v) {
     var old = e.value;
     var u = e.onchange;
     e.innerHTML = "<option value=\" \">- None -</option>"+v;

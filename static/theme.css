@@ -53,3 +53,7 @@ textarea{
 .body-unlinked {
     background-color: #111111;
 }
+
+input[type=number] {
+    width:50px;
+}

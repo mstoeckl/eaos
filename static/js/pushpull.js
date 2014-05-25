@@ -1,11 +1,9 @@
-"use strict"
-
-alert = (function () {
+(function () {
     var pushqueue = [];
     var available = false;
     var pulls = {}
 
-    var socket = new WebSocket("ws://localhost:8888/socket");
+    var socket = new WebSocket("ws://"+window.location.host+"/socket")
     socket.onopen = function () {
         socket.send(window.location.pathname);
         while (pushqueue.length > 0) {

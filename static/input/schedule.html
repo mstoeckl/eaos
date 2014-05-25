@@ -8,13 +8,13 @@
 Clear and Reset Schedule </button></p>
 
 <p><textarea class="crosslink" name="csv_entry" autofocus>
-{{engine.data.schedule_regen()[0]}}
+{{engine.csvify(engine.data.schedule_regen())}}
 </textarea></p>
 
 <br/>
 
 <table class="crosslink" name="csv_table">
-{{ engine.data.schedule_regen()[1]}}
+{{engine.tablify(engine.data.schedule_regen())}}
 </table>
 
 
