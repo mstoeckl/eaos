@@ -1,8 +1,11 @@
-import csv, io
+import csv
+import io
+
 
 def tablify(array):
-    rt = lambda row: "<td>"+"</td><td>".join(map(str,row))+"</td>"
-    return "<tr>" +"</tr><tr>".join(map(rt,array))+"</tr>"
+    rt = lambda row: "<td>" + "</td><td>".join(map(str, row)) + "</td>"
+    return "<tr>" + "</tr><tr>".join(map(rt, array)) + "</tr>"
+
 
 def csvify(array):
     sstream = io.StringIO()
@@ -11,7 +14,8 @@ def csvify(array):
         writer.writerow(row)
     return sstream.getvalue()
 
+
 def surround_list(li, tag):
     pre = "<{}>".format(tag)
     post = "</{}>".format(tag)
-    return pre + (post+pre).join(map(str,li)) + post
+    return pre + (post + pre).join(map(str, li)) + post

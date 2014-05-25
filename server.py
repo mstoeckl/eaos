@@ -39,15 +39,19 @@ re_map = {
 
 
 class TemplateHandler(web.RequestHandler):
+
     def get(self, path):
-        self.set_header("Cache-control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.set_header(
+            "Cache-control", "no-store, no-cache, must-revalidate, max-age=0")
         for key in number_pages:
             if path == key:
-                self.render("static/{}-index.html".format(path), **template_context)
-            if path.startswith(key+"/"):
-                u = path.lstrip(key+"/")
-                if SocketHandler.engine.page_exists("/"+key, u):
-                    self.render("static/{}.html".format(key), page=u, **template_context)
+                self.render(
+                    "static/{}-index.html".format(path), **template_context)
+            if path.startswith(key + "/"):
+                u = path.lstrip(key + "/")
+                if SocketHandler.engine.page_exists("/" + key, u):
+                    self.render(
+                        "static/{}.html".format(key), page=u, **template_context)
                     return
                 raise web.HTTPError(404)
 
@@ -63,6 +67,7 @@ class TemplateHandler(web.RequestHandler):
 
 
 class SocketHandler(websocket.WebSocketHandler):
+
     """
     Passes incoming messages to the engine, and
     echos them back to all source page types
@@ -87,7 +92,8 @@ class SocketHandler(websocket.WebSocketHandler):
             key, val = message.split("=")
             SocketHandler.send(self.path, key, val)
             if options.loud:
-                print("\033[1;35m[Pull]\033[0m Page \"{}\"; Key \"{}\"; Value \"{}\"".format(self.path,key,val))
+                print("\033[1;35m[Pull]\033[0m Page \"{}\"; Key \"{}\"; Value \"{}\"".format(
+                    self.path, key, val))
             SocketHandler.engine.receive(self.path, key, val)
 
     def on_close(self):
@@ -96,13 +102,16 @@ class SocketHandler(websocket.WebSocketHandler):
     @staticmethod
     def send(page, key, val):
         if options.loud:
-            print("\033[1;33m[Push]\033[0m Page \"{}\"; Key \"{}\"; Value \"{}\"".format(page,key,val))
+            print("\033[1;33m[Push]\033[0m Page \"{}\"; Key \"{}\"; Value \"{}\"".format(
+                page, key, val))
 
         if page in SocketHandler.connections:
             for x in SocketHandler.connections[page]:
                 x.write_pair(key, val)
 
+
 class Accelerator():
+
     def __init__(self, lump, dead):
         if dead:
             self.none()
@@ -111,24 +120,28 @@ class Accelerator():
                 self.lumped()
             else:
                 self.split()
+
     def split(self):
         self.stylesheet = "<link rel='stylesheet' href='/theme.css'>"
         self.pushpull = "<script src='/js/pushpull.js'></script>"
         self.auto = "<script src='/js/auto.js'></script>"
+
     def open(self, path):
-        with open("static"+path) as f:
+        with open("static" + path) as f:
             return f.read()
+
     def taglock(self, tag, path):
         return "<{0}>{1}</{0}>".format(tag, self.open(path))
+
     def lumped(self):
-        self.stylesheet = self.taglock("style","/theme.css")
-        self.pushpull = self.taglock("script","/js/pushpull.js")
-        self.auto = self.taglock("script","/js/auto.js")
+        self.stylesheet = self.taglock("style", "/theme.css")
+        self.pushpull = self.taglock("script", "/js/pushpull.js")
+        self.auto = self.taglock("script", "/js/auto.js")
+
     def none(self):
         self.stylesheet = ""
         self.pushpull = "<script>push=pull=unpull=function(){}</script>"
         self.auto = ""
-
 
 
 def main():
@@ -164,7 +177,7 @@ if __name__ == "__main__":
             # go to python script location
             if os.path.exists(self.it):
                 old_pid = int(open(self.it).read())
-                #os.kill(old_pid,signal.SIGINT) # does not work??
+                # os.kill(old_pid,signal.SIGINT) # does not work??
                 os.system("kill -2 {}".format(old_pid))
             open(self.it, "w").write(str(os.getpid()))
             time.sleep(0.5)

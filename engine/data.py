@@ -1,11 +1,18 @@
-import os,csv,io,json,random
+import os
+import csv
+import io
+import json
+import random
 from collections import defaultdict
+
 
 def readcsv(string):
     reader = csv.reader(string.split("\n"))
-    return [list(map(lambda u:u.strip(),row)) for row in reader if row]
+    return [list(map(lambda u:u.strip(), row)) for row in reader if row]
+
 
 class Match():
+
     def __init__(self, store=None):
         if store is None:
             store = defaultdict(str)
@@ -18,11 +25,11 @@ class Match():
         if i < 0 or i > 6:
             raise IndexError
         l = str(i)
-        return {"Team":self.store["T"+l],"Actions":self.store["A"+l],"Scouter":self.store["S"+l]}
+        return {"Team": self.store["T" + l], "Actions": self.store["A" + l], "Scouter": self.store["S" + l]}
 
     def set_slot(self, slot, key, val):
-        translate = {"Actions":"A","Team":"T","Scouter":"S"}
-        self.store[translate[key]+str(slot)] = val
+        translate = {"Actions": "A", "Team": "T", "Scouter": "S"}
+        self.store[translate[key] + str(slot)] = val
 
     def scores(self):
         d = {}
@@ -34,7 +41,9 @@ class Match():
                 d[s] = int(d[s])
         return d
 
+
 class Store():
+
     """
         There are two encoding choices: JSON and CSV.
         CSV has less overhead, JSON is easier to edit by hand.
@@ -42,9 +51,11 @@ class Store():
     """
 
     # TODO: typing
-    scores = "RedAuto, RedTele, RedFoul, BlueAuto, BlueTele, BlueFoul".split(", ")
+    scores = "RedAuto, RedTele, RedFoul, BlueAuto, BlueTele, BlueFoul".split(
+        ", ")
     match = "Match"
-    entries = "T0, A0, S0, T1, A1, S1, T2, A2, S2, T3, A3, S3, T4, A4, S4, T5, A5, S5".split(", ")
+    entries = "T0, A0, S0, T1, A1, S1, T2, A2, S2, T3, A3, S3, T4, A4, S4, T5, A5, S5".split(
+        ", ")
     header = [match] + scores + entries
 
     def __init__(self, path):
@@ -52,7 +63,7 @@ class Store():
         self.load()
 
     def save(self):
-        with open(self.path,"w") as f:
+        with open(self.path, "w") as f:
             writer = csv.writer(f)
             writer.writerow(Store.header)
             for k in sorted(self.data.keys()):
@@ -91,14 +102,14 @@ class Store():
 
         self.save()
 
-    sched_header = ["Match","Red1","Red2","Red3","Blue1","Blue2","Blue3"]
+    sched_header = ["Match", "Red1", "Red2", "Red3", "Blue1", "Blue2", "Blue3"]
 
     def delete_entry(self, match):
         del self.data[match]
 
     def mod_entry(self, match, scheddat):
-        translate = {"Match":"Match","Red1":"T0","Red2":"T1","Red3":"T2",
-                     "Blue1":"T3","Blue2":"T4","Blue3":"T5"}
+        translate = {"Match": "Match", "Red1": "T0", "Red2": "T1", "Red3": "T2",
+                     "Blue1": "T3", "Blue2": "T4", "Blue3": "T5"}
         if match not in self.data:
             self.data[match] = Match()
         store = self.data[match].store
@@ -114,7 +125,7 @@ class Store():
             return self.schedule_regen()
         if any(len(r) < len(blk[0]) for r in blk[1:]):
             return self.schedule_regen()
-        dicts = [dict(zip(blk[0], blk[i])) for i in range(1,len(blk))]
+        dicts = [dict(zip(blk[0], blk[i])) for i in range(1, len(blk))]
         overall = {}
         for d in dicts:
             overall[d["Match"]] = d
@@ -134,11 +145,13 @@ class Store():
         deleted_robots = self.regen_index()
         self.save()
         return self.schedule_regen(), deleted, deleted_robots
+
     def reset_schedule(self):
         print("NO RESET ALLOWED! BAD FEATURE!")
 
         self.regen_index()
         return self.schedule_regen(), [], []
+
     def schedule_regen(self):
         st = [Store.sched_header]
         for key in sorted(self.data.keys()):
@@ -148,31 +161,33 @@ class Store():
         # raw, table
         return st
 
-    def get_actions(self,match,spot, key,default):
+    def get_actions(self, match, spot, key, default):
         if match in self.data:
             return self.data[match][spot][key]
         else:
             return default
-    def set_actions(self,match,spot,key,val):
+
+    def set_actions(self, match, spot, key, val):
         if match in self.data:
             self.data[match].set_slot(spot, key, val)
             self.save()
         else:
             print("Invalid match: |{}|".format(match))
 
-
     def get_actions_team(self, match, spot):
-        return self.get_actions(match,spot,"Team","????")
+        return self.get_actions(match, spot, "Team", "????")
+
     def get_actions_actions(self, match, spot):
-        return self.get_actions(match,spot,"Actions","")
+        return self.get_actions(match, spot, "Actions", "")
+
     def get_actions_scouter(self, match, spot):
-        return self.get_actions(match,spot,"Scouter","")
+        return self.get_actions(match, spot, "Scouter", "")
 
     def set_actions_actions(self, match, spot, string):
-        self.set_actions(match,spot,"Actions",string)
+        self.set_actions(match, spot, "Actions", string)
 
     def set_actions_scouter(self, match, spot, initials):
-        self.set_actions(match,spot,"Scouter",initials)
+        self.set_actions(match, spot, "Scouter", initials)
 
     def matchoptions(self):
         items = sorted(self.data.keys())
@@ -180,8 +195,10 @@ class Store():
         s = "".join("<option>{}</option>".format(i) for i in items)
 
         return s
+
     def matchlist(self):
         return sorted(self.data.keys())
+
     def robotlist(self):
         return sorted(self.index.keys())
 
@@ -193,42 +210,51 @@ class Store():
             return int(v)
         else:
             return 0
+
     def get_total_score(self, match, term):
         if match not in self.data:
             return 0
 
-        keys = ("Tele","Auto","Foul")
+        keys = ("Tele", "Auto", "Foul")
         scores = self.data[match].scores()
         s = 0
         for k in keys:
-            j = scores[term+k]
+            j = scores[term + k]
             if j:
                 s += int(j)
         return s
+
     def get_red_tele_score(self, match):
         return self.get_score(match, "RedTele")
+
     def get_red_auto_score(self, match):
         return self.get_score(match, "RedAuto")
+
     def get_red_foul_score(self, match):
         return self.get_score(match, "RedFoul")
+
     def get_blue_tele_score(self, match):
         return self.get_score(match, "BlueTele")
+
     def get_blue_auto_score(self, match):
         return self.get_score(match, "BlueAuto")
+
     def get_blue_foul_score(self, match):
         return self.get_score(match, "BlueFoul")
+
     def set_score(self, match, item, val):
         if match in self.data:
             self.data[match].store[item] = val
         self.save()
+
     def get_robot(self, match, term, i):
         if match not in self.data:
             return "????"
 
         if term == "Red":
-            index = (i-1)
+            index = (i - 1)
         elif term == "Blue":
-            index = (i-1) + 3
+            index = (i - 1) + 3
         else:
             return "?term?"
 
@@ -240,29 +266,26 @@ class Store():
             if d[i]["Team"] == robot:
                 return i
         raise KeyError
+
     def get_alliance_score(self, match, spot):
         scores = self.data[match].scores()
 
-        keys = ("Tele","Auto","Foul")
+        keys = ("Tele", "Auto", "Foul")
         if spot < 3:
             group = "Red"
         else:
             group = "Blue"
-        translate = dict(zip((group + k for k in keys) ,keys))
+        translate = dict(zip((group + k for k in keys), keys))
         v = {}
         for key in translate:
             v[translate[key]] = scores[key]
         return v
 
-
-
-
-
-
-
     def match_exists(self, match):
         return match in self.data
+
     def robot_exists(self, robot):
         return robot in self.index
+
     def get_matches(self, robot):
         return sorted(self.index[robot])
