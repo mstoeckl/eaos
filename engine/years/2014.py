@@ -2,6 +2,20 @@ import random
 
 from ..common import surround_list
 
+def transpose(array):
+    x = [[] for e in array[0]]
+    for i in range(len(array)):
+        for j in range(len(array[i])):
+            x[j].append(array[i][j])
+    return x
+
+def mean(li):
+    return sum(li) / len(li)
+
+def r1(x):
+    return round(x,1)
+
+
 
 class Analysis():
     conversion = {
@@ -33,18 +47,33 @@ class Analysis():
         'Z': ("DAM", "Damaged Robot")
     }
 
-    def __init__(self, data):
-        self.data = data
-
     def get_robot_match_header(self):
-        header = ["Auto Contribution", "Tele Contributions"]
+        header = ["Auto Contribution", "Tele Contributions","Match log"]
         return header
 
-    def get_robot_match_results(self, robot, match):
-        spot = self.data.get_robot_spot(robot, match)
-        alliance_scores = self.data.get_alliance_score(match, spot)
-        actions = self.data.data[match][spot]["Actions"]
+    def get_robot_match_results(self, robot_data, robot, match):
+        match_data = robot_data[match]
+        tas = match_data["data"]
+        for i in range(6):
+            if tas[i][0] == robot:
+                break
+        if i < 3:
+            alliance_scores = match_data["score"][0:3]
+        else:
+            alliance_scores = match_data["score"][3:6]
 
-        values = [round(alliance_scores["Auto"] / 3, 1),
-                  round(alliance_scores["Tele"] / 3, 1)]
+        log=[]
+        for letter in tas[i][1]:
+            log.append(Analysis.conversion[letter][1])
+
+        values = [round(alliance_scores[1] / 3, 1),
+                round(alliance_scores[0] / 3, 1), surround_list(log, "div")]
         return values
+
+    def get_robot_stats_header(self):
+        return ["Auto Contribution", "Tele Contributions"]
+    def get_robot_stats_results(self, data, robot):
+        arr = [self.get_robot_match_results(data, robot, match) for match in data]
+        t = transpose(arr)
+
+        return {"min":[r1(min(t[0])),r1(min(t[1]))], "max":[r1(max(t[0])),r1(max(t[1]))], "avg":[r1(mean(t[0])),r1(mean(t[1]))]}

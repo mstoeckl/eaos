@@ -12,15 +12,16 @@
     <td>Blue Auto</td>
     <td>Blue Foul</td>
 </tr>
-    {% for match in engine.data.matchlist() %}
+    {% for match in engine.data.get_match_list() %}
+    {% set v = engine.data.get_scores(match) %}
         <tr id="row-{{match}}">
         <td>{{match}}</td>
-        <td><input type="number" id="RedTele-{{match}}" value="{{engine.data.get_red_tele_score(match)}}"/></td>
-        <td><input type="number" id="RedAuto-{{match}}" value="{{engine.data.get_red_auto_score(match)}}"/></td>
-        <td><input type="number" id="RedFoul-{{match}}" value="{{engine.data.get_red_foul_score(match)}}"/></td>
-        <td><input type="number" id="BlueTele-{{match}}" value="{{engine.data.get_blue_tele_score(match)}}"/></td>
-        <td><input type="number" id="BlueAuto-{{match}}" value="{{engine.data.get_blue_auto_score(match)}}"/></td>
-        <td><input type="number" id="BlueFoul-{{match}}" value="{{engine.data.get_blue_foul_score(match)}}"/></td>
+        <td><input type="number" id="0-{{match}}" value="{{v[0]}}"/></td>
+        <td><input type="number" id="1-{{match}}" value="{{v[1]}}"/></td>
+        <td><input type="number" id="2-{{match}}" value="{{v[2]}}"/></td>
+        <td><input type="number" id="3-{{match}}" value="{{v[3]}}"/></td>
+        <td><input type="number" id="4-{{match}}" value="{{v[4]}}"/></td>
+        <td><input type="number" id="5-{{match}}" value="{{v[5]}}"/></td>
         </tr>
     {% end %}
 </table>
@@ -30,7 +31,7 @@
 "use strict"
 
 var matches = [];
-var prefixes = ["RedTele","RedAuto","RedFoul","BlueTele","BlueAuto","BlueFoul"];
+var prefixes = ["0","1","2","3","4","5"];
 
 function wipepull(match) {
     for (var i=0;i<prefixes.length;i++) {
@@ -58,7 +59,7 @@ function setpull(match) {
     }
 }
 
-{% for match in engine.data.matchlist() %}
+{% for match in engine.data.get_match_list() %}
     setpull("{{match}}")
 {% end %}
 

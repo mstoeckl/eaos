@@ -7,7 +7,7 @@ Match index: links from here to the matches.
 </p>
 
 <div id="list">
-{% for match in engine.data.matchlist() %}
+{% for match in engine.data.get_match_list() %}
 
 <div><a href="/view/match/{{match}}">{{match}}</a></div>
 

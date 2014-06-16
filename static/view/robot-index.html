@@ -8,7 +8,7 @@ Robot index: links from here to the bots.
 
 
 <div id="list">
-{% for robot in engine.data.robotlist() %}
+{% for robot in engine.data.get_robot_list() %}
 
 <div><a href="/view/robot/{{robot}}">{{robot}}</a></div>
 

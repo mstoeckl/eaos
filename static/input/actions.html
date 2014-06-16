@@ -6,7 +6,7 @@
 
 <p><select id="match_num">
     <option selected="selected" value=" ">- None -</option>
-    {{engine.data.matchoptions()}}
+    {{engine.surround_list(engine.data.get_match_list(),"option")}}
 </select></p>
 
 <table>
@@ -23,9 +23,9 @@
 {% elif i==3 %}
 <td rowspan=3>Blue</td>
 {% end %}
-<td id="team-{{i}}">{{engine.data.get_actions_team("", i)}}</td>
-<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions_actions("", i)}}"/></td>
-<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_actions_scouter("", i)}}"/></td>
+<td id="team-{{i}}">{{engine.data.get_team("", i)}}</td>
+<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions("", i)}}"/></td>
+<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_scouter("", i)}}"/></td>
 </tr>
 {% end %}
 </table>
@@ -70,10 +70,16 @@ e.onchange = function() {
     push("match_num", num);
 }
 
-pull("match_options", function(v) {
+pull("match_list", function(val) {
+    var list = JSON.parse(val);
     var old = e.value;
     var u = e.onchange;
-    e.innerHTML = "<option value=\" \">- None -</option>"+v;
+    e.innerHTML = "<option value=\" \">- None -</option>";
+    for (var i=0;i<list.length;i++) {
+        var opt = document.createElement("option");
+        opt.innerHTML = list[i];
+        e.appendChild(opt);
+    }
     e.value = old;
     e.onchange = u;
     e.onchange();

@@ -7,11 +7,10 @@
 <table id="matches">
 <tr>
 <td>Match</td>
-<!-- These are year-specific details. Do a year-load? -->
 
 {% set tdify = lambda u: engine.surround_list(u, "td") %}
 
-{{ tdify(engine.year.get_robot_match_header()) }}
+{{ tdify(engine.data.get_robot_match_header()) }}
 
 </tr>
 
@@ -19,10 +18,31 @@
 <tr>
 <td><a href="/view/match/{{match}}">{{match}}</a></td>
 
-{{ tdify(engine.year.get_robot_match_results(page, match)) }}
+{{ tdify(engine.data.get_robot_match_results(page, match)) }}
 
 </tr>
 {% end %}
+</table>
+
+<h3> Statistics </h3>
+<table id="stats">
+<tr>
+<td>Statistic</td>
+{{tdify(engine.data.get_robot_stats_header())}}
+</tr>
+{% set stats = engine.data.get_robot_stats_results(page) %}
+<tr>
+<td>Min</td>
+{{tdify(stats["min"])}}
+</tr>
+<tr>
+<td>Avg</td>
+{{tdify(stats["avg"])}}
+</tr>
+<tr>
+<td>Max</td>
+{{tdify(stats["max"])}}
+</tr>
 </table>
 
 <script>
@@ -36,7 +56,6 @@ pull("update_matches", function (e) {
     var arr = JSON.parse(e);
     var table = document.getElementById("matches");
     table.innerHTML = "";
-    console.log(arr);
 
     // basically rebuilding the table
 
@@ -63,8 +82,23 @@ pull("update_matches", function (e) {
         }
         table.appendChild(rn);
     }
+});
 
+pull("update_stats", function(e) {
+   var arr= JSON.parse(e);
+   var table = document.getElementById("stats");
+   table.innerHTML = "";
 
+   for (var y=0;y<arr.length;y++) {
+        var row = arr[y];
+        var rn = document.createElement("tr");
+        for (var x=0;x<row.length;x++) {
+            var blk = document.createElement("td");
+            blk.innerHTML = row[x];
+            rn.appendChild(blk);
+        }
+        table.appendChild(rn);
+   }
 });
 
 pull("destroy", function (e) {
