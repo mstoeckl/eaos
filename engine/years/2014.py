@@ -52,18 +52,15 @@ class Analysis():
         return header
 
     def get_robot_match_results(self, robot_data, robot, match):
-        match_data = robot_data[match]
-        tas = match_data["data"]
-        for i in range(6):
-            if tas[i][0] == robot:
-                break
+        match_data = robot_data[(match,)]
+        i = match_data["teams"].index(robot)
         if i < 3:
-            alliance_scores = match_data["score"][0:3]
+            alliance_scores = match_data["score"][0]
         else:
-            alliance_scores = match_data["score"][3:6]
+            alliance_scores = match_data["score"][1]
 
         log=[]
-        for letter in tas[i][1]:
+        for letter in match_data["actions"][i]:
             log.append(Analysis.conversion[letter][1])
 
         values = [round(alliance_scores[1] / 3, 1),
@@ -73,7 +70,7 @@ class Analysis():
     def get_robot_stats_header(self):
         return ["Auto Contribution", "Tele Contributions"]
     def get_robot_stats_results(self, data, robot):
-        arr = [self.get_robot_match_results(data, robot, match) for match in data]
+        arr = [self.get_robot_match_results(data, robot, match[0]) for match in data]
         t = transpose(arr)
 
         return {"min":[r1(min(t[0])),r1(min(t[1]))], "max":[r1(max(t[0])),r1(max(t[1]))], "avg":[r1(mean(t[0])),r1(mean(t[1]))]}

@@ -6,7 +6,6 @@ import json
 import importlib
 from .data import Store
 from .common import *
-from . node import Node
 
 
 class Config():
@@ -59,6 +58,7 @@ class Engine():
         os.makedirs(self.path, exist_ok=True)
         self.config = Config(path + "/config")
         self.output = output
+
         def push(*x):
             return self.output(*x)
         module = importlib.import_module("engine.years." + str(year))

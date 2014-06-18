@@ -46,7 +46,8 @@ class TemplateHandler(web.RequestHandler):
         for key in number_pages:
             if path == key:
                 self.render(
-                    "static/{}-index.html".format(path), **template_context)
+                    "static/{}-index.html".format(key), **template_context)
+                return
             if path.startswith(key + "/"):
                 u = path.lstrip(key + "/")
                 if SocketHandler.engine.page_exists("/" + key, u):
@@ -58,9 +59,14 @@ class TemplateHandler(web.RequestHandler):
         if path in pass_map:
             real = path
         else:
-            try:
-                real = re_map[path]
-            except KeyError:
+            r = path.rstrip("/")
+            if r in re_map:
+                if r != path:
+                    self.redirect("/"+r)
+                    return
+                else:
+                    real = re_map[r]
+            else:
                 raise web.HTTPError(404)
 
         self.render("static/{}.html".format(real), **template_context)
@@ -86,7 +92,7 @@ class SocketHandler(websocket.WebSocketHandler):
 
     def on_message(self, message):
         if self.path is None:
-            self.path = message
+            self.path = tornado.escape.url_unescape(message, plus=False)
             SocketHandler.connections[self.path].append(self)
         else:
             key, val = message.split("=")

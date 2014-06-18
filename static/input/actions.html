@@ -23,9 +23,9 @@
 {% elif i==3 %}
 <td rowspan=3>Blue</td>
 {% end %}
-<td id="team-{{i}}">{{engine.data.get_team("", i)}}</td>
-<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions("", i)}}"/></td>
-<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_scouter("", i)}}"/></td>
+<td id="team-{{i}}">{{engine.data.get_team(" ", i)}}</td>
+<td><input id="actions-{{i}}" type="text" pattern="[a-zA-Z]*" style="text-transform:uppercase;" value="{{engine.data.get_actions(" ", i)}}"/></td>
+<td><input id="scouter-{{i}}" style="width:50px;" value="{{engine.data.get_scouter(" ", i)}}"/></td>
 </tr>
 {% end %}
 </table>

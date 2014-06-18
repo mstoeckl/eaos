@@ -1,73 +1,6 @@
 from copy import deepcopy
 
 
-class Node():
-
-    def __init__(self, redo, onchange, dependencies=tuple()):
-        self.redo = redo
-        self.onchange = onchange
-        self.dependencies = dependencies
-        self.data = None
-        self.futures = dict()
-
-        for node in self.dependencies:
-            node.futures[id(self)] = self
-
-    def unlink(self):
-        for node in self.dependencies:
-            del node.futures[id(self)]
-        self.dependencies = []
-
-    def __del__(self):
-        self.unlink()
-
-    def __repr__(self):
-        return "[N: {} -> {}]".format(self.redo.__name__,
-                                      self.onchange.__name__)
-
-    def __hash__(self):
-        return id(self)
-
-    def __eq__(self, o):
-        return id(self) == id(o)
-
-    @staticmethod
-    def multi_update(kvp):
-        """
-        N objects are dirty and can be fed updates.  Feed them their updates and also resolve the network
-        without unnecessary redos.
-        """
-        pass
-
-    def update(self, input=None):
-        dirty = dict()
-        dirty[id(self)] = self
-        while dirty:
-            # grab a Node that is dirty but has no dirty dependencies
-            node = next(iter(dirty.items()))[1]
-            impure = True
-            while impure:
-                impure = False
-                for dep in node.dependencies:
-                    if id(dep) in dirty:
-                        node = dep
-                        impure = True
-                        break
-
-            # update
-            del dirty[id(node)]
-            if input is not None and node == self:
-                data = node.redo(
-                    input, *[dep.data for dep in node.dependencies])
-            else:
-                data = node.redo(*[dep.data for dep in node.dependencies])
-            if data != node.data:
-                node.data = data
-                node.onchange(node.data)
-                for i in node.futures:
-                    dirty[i] = node.futures[i]
-
-
 class sentinel():
 
     def __init__(self, desc):
@@ -268,18 +201,19 @@ class link():
             link._dirty.add(self)
             return self
 
-        def modify(self, new_state, still_clean=False):
+        in_place = sentinel("in_place")
+
+        def modify(self, new_state=in_place):
             """
-            If still_clean is False but the state is unchanged, node
-            is not marked as dirty.
+            Sets state.
+            All dependent nodes are marked dirty.
 
             Returns self for chaining.
             """
-            if new_state == self.state:
-                return
-            self.state = deepcopy(new_state)
-            if not still_clean:
-                self.dirty()
+            if new_state is not link._instance.in_place:
+                self.state = new_state
+            for element in self.get_downstream_dependencies():
+                link._dirty.add(element)
 
             return self
 
@@ -288,7 +222,8 @@ class link():
             Return true if state changed; else return false.
             Careful: State is copied to permit safe modifications
             """
-            next_state = self.func(deepcopy(self.state), **dependency_data)
+            next_state = self.func(
+                self.vector, deepcopy(self.state), **dependency_data)
             if next_state != self.state:
                 self.state = next_state
                 return True
@@ -339,6 +274,14 @@ class link():
 
             return elems
 
+        def get_downstream_dependencies(self):
+            g = set()
+            for cont in self.downstream:
+                g.add(cont)
+            for cont in link._typehooks[self.func.__name__]:
+                g.add(cont)
+            return g
+
         def delete(self):
             """
             Unlink an element. Goodbye, world.
@@ -383,6 +326,8 @@ class link():
                 elem = self.varies[proxy].pop(vector)
                 elem.downstream.remove(self)
 
+            return self
+
         def _vary_clean(self, proxy, *ids):
             if proxy not in self.varies:
                 e = Exception(
@@ -416,6 +361,8 @@ class link():
                 self.varies[proxy][vector] = elem
                 elem.downstream.add(self)
 
+            return self
+
         def remove(self, proxy, *ids):
             """
             Remove the specified vector ids from a variable dependency
@@ -424,6 +371,8 @@ class link():
             for vector in vectors & self.varies[proxy].keys():
                 elem = self.varies[proxy].pop(vector)
                 elem.downstream.remove(self)
+
+            return self
 
     @staticmethod
     def clean():
@@ -451,9 +400,7 @@ class link():
 
             # inputs must be in dependency order...
             if node(**node.get_upstream_data()):
-                for cont in node.downstream:
-                    dirty.add(cont)
-                for cont in link._typehooks[node.func.__name__]:
+                for cont in node.get_downstream_dependencies():
                     dirty.add(cont)
 
     @staticmethod
@@ -464,7 +411,7 @@ class link():
         if not isinstance(proxy_type, link._proxy):
             e = Exception("Not a proxy type. Not at all.")
             raise e
-        return sorted(link._table[proxy_type.func.__name__].keys())
+        return set(link._table[proxy_type.func.__name__].keys())
 
     """
     sentinels to mark rules

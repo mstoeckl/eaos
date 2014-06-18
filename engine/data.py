@@ -1,165 +1,237 @@
 import os
 import csv
-import io
 import json
-import random
 from collections import defaultdict
-from . node import Node
+from copy import deepcopy
+
+from . node import link
 from . common import *
-from copy import copy, deepcopy
 
-# injected
-push = None
-schedule_node = None
 year = None
-save_data = None
-
-# global links
-
-matches = {}
-# takes: "match":(ActionNode, ScoreNode, SynthNode)
-
-robots = {}
-# takes: "robot":(RoboNode)
-
+push = None
+save_path = None
 
 # helpers
 
-def get_match_list():
-    return sorted(matches.keys())
-def get_robot_list():
-    return sorted(robots.keys())
 
 def spread(pages, key, value):
     for p in pages:
         push(p, key, value)
+
+
 def cast(page, **kvp):
     for k, v in kvp.items():
         push(page, k, v)
-def constNode(v):
-    n = Node(lambda x: v, lambda x:v)
-    n.data = v
-    return n
 
 # ROOT NODES
 
-def actions_redo(input):
-    return input
-def actions_onchange(action_data):
-    pass
 
-def score_redo(input):
-    return forceints(input)
-def score_onchange(action_data):
-    pass
+@link(default=[])
+def raw_schedule(vector, this):
+    return this
 
-def schedule_redo(input):
-    dct = {}
-    for row in input:
-        dct[row[0]] = row[1:]
-    return dct
+
+@link(dim=1, default=[['', ''] for i in range(6)])
+def raw_actions(vector, this):
+    return this
+
+
+@link(dim=1, default=[0, 0, 0, 0, 0, 0])
+def raw_score(vector, this):
+    return this
+
+# INNERWARE
+
+
+def mkindex(schedule):
+    index = defaultdict(set)
+    for match, robots in schedule.items():
+        for robot in robots:
+            index[robot].add(match)
+    return index
+
+
+@link(default=({}, defaultdict(set)), dependencies={raw_schedule: link.only})
+def schedule(vector, this, raw_schedule=0):
+    """ As side effect, terminates pages, adds/unlinks match/page nodes """
+
+    new = dict(map(lambda u: (u[0], u[1:]), raw_schedule))
+    new_idx = mkindex(new)
+    old, old_idx = this
+
+    for team in old_idx.keys() - new_idx.keys():
+        robot_page(team).delete()
+        robot(team).delete()
+        push("/view/robot/" + team, "destroy", "")
+
+    for team in new_idx.keys() - old_idx.keys():
+        r = robot(team)
+        for mtc in new_idx[team]:
+            r.add(match, (mtc,))
+        robot_page(team)
+
+    for team in new_idx.keys() & old_idx.keys():
+        r = robot(team)
+        for mtc in new_idx[team] - old_idx[team]:
+            r.add(match, (mtc,))
+        for mtc in old_idx[team] - new_idx[team]:
+            r.remove(match, (mtc,))
+
+    for mtc in old.keys() - new.keys():
+        match_page(mtc).delete()
+        match(mtc).delete()
+        raw_actions(mtc).delete()
+        raw_score(mtc).delete()
+        push("/view/match/" + match, "destroy", "")
+
+    for mtc in new.keys() - old.keys():
+        raw_actions(mtc)
+        raw_score(mtc)
+        match(mtc)
+        match_page(mtc)
+
+    return new, new_idx
+
+    print("schedule received {}...{}".format(
+        raw_schedule[:1], raw_schedule[-1:]))
+    return not this
+
+
+@link(dim=1, dependencies={
+      schedule: link.only, raw_actions: link.match, raw_score: link.match})
+def match(vector, this, schedule=0, raw_actions=0, raw_score=0):
+    this = {"score": [raw_score[:3], raw_score[3:]],
+            "teams": schedule[0][vector[0]],
+            "actions": [x[0] for x in raw_actions],
+            "scouters": [x[1] for x in raw_actions]}
+
+    return this
+
+
+@link(dim=1, dependencies={match: link.vary})
+def robot(vector, this, match=0):
+    return match
+
+# OUTERWARE
+
+
+@link(dim=1, dependencies={match: link.match})
+def match_page(vector, this, match=0):
+    """ Match page """
+
+    scores = flatten(match["score"])
+    teams = match["teams"]
+    fields = {}
+    for i in range(6):
+        fields["robot-" + str(i)] = teams[i]
+        fields["score-" + str(i)] = scores[i]
+    fields["Red_score_total"] = scores[0] + scores[1] + scores[2]
+    fields["Blue_score_total"] = scores[3] + scores[4] + scores[5]
+
+    cast("/view/match/" + vector[0], **fields)
+    return this
+
+
+@link(dim=1, dependencies={robot: link.match})
+def robot_page(vector, this, robot=0):
+    """ Robot page, & analysis """
+    rbt = vector[0]
+    match_table = [["Match"] + year.get_robot_match_header()]
+    for mtc in sorted(robot.keys()):
+        match_table.append(
+            [mtc[0]] + year.get_robot_match_results(robot, rbt, mtc[0]))
+
+    push("/view/robot/" + rbt, "update_matches", json.dumps(match_table))
+
+    stats_table = [["Statistic"] + year.get_robot_stats_header()]
+    data = year.get_robot_stats_results(robot, rbt)
+    for param, key in (("min", "Min"), ("avg", "Avg"), ("max", "Max")):
+        stats_table.append([key] + data[param])
+    push("/view/robot/" + rbt, "update_stats", json.dumps(stats_table))
+    return match_table, stats_table
+
 
 def schedule_to_array(dct):
     d = dct
     x = [Store.sched_header]
-    for match,teams in sorted(d.items()):
+    for match, teams in sorted(d.items()):
         x.append([match] + teams)
     return x
 
-def schedule_onchange(schedule_data):
-    index = defaultdict(set)
 
-    # delete old matches
-    for match in list(matches.keys()):
-        if match not in schedule_data:
-            for u in matches[match]:
-                u.unlink()
-            del matches[match]
-            push("/view/match/"+match, "destroy", "")
-
-    # add new matches, index robots
-    for match, teams in schedule_data.items():
-        if match not in matches:
-            mk_match(match, {})
-        for t in teams:
-            index[t].add(match)
-
-    # delete old robots
-    for t in list(robots.keys()):
-        if t not in index:
-            robots[t].unlink()
-            del robots[t]
-            push("/view/robot/"+t, "destroy", "")
-
-    # add new robots
-    for t,mx in index.items():
-        if t in robots:
-            robots[t].unlink()
-        robonode = Node(robot_redo, robot_onchange, [constNode(t)]+[matches[match][2] for match in mx])
-        robots[t] = robonode
-
-    #push raw
-
-    arr = schedule_to_array(schedule_data)
+def push_schedule_page(matches):
+    arr = schedule_to_array(matches)
+    # TODO: just push it in JSON format, have page deserialize. One control
+    # point!
     push("/input/schedule", "csv_entry", csvify(arr))
     push("/input/schedule", "csv_table", tablify(arr))
 
 
+@link(dependencies={schedule: link.only})
+def schedule_page(vector, this, schedule=0):
+    """ Index pages; """
+    matches, robots = schedule
+    push_schedule_page(matches)
+
     spread(("/input/match", "/view/match", "/input/actions"),
-           "match_list", json.dumps(get_match_list()))
+           "match_list", json.dumps(sorted(matches.keys())))
 
-    push("/view/robot", "robot_list", json.dumps(get_robot_list()))
+    push("/view/robot", "robot_list", json.dumps(sorted(robots.keys())))
+    return this
+
+# AUXILIARY
 
 
-# EXTENDED NODES
+@link(dependencies={match: link.all})
+def save(vector, this, match=0):
+    table = [Store.header]
+    for k in sorted(match.keys()):
+        d = match[k]
 
-def robot_redo(robot, *match_data):
-    # here, calculate the relevant statistics
-    return (robot, dict(zip(map(lambda x: x["num"], match_data), match_data)))
-def robot_onchange(robot_data):
-    robot = robot_data[0]
-    # push to page
-    table = [["Match"] + year.get_robot_match_header()]
-    for match in sorted(robot_data[1].keys()):
-        table.append(
-            [match] + year.get_robot_match_results(robot_data[1], robot, match))
+        group = [k[0]] + flatten(d["score"]) + flatten(
+            [[d["teams"][i], d["actions"][i], d["scouters"][i]] for i in range(6)])
+        table.append(group)
 
-    push("/view/robot/" + robot, "update_matches", json.dumps(table))
-
-    table = [["Statistic"] + year.get_robot_stats_header()]
-    data = year.get_robot_stats_results(robot_data[1], robot)
-    for param,key in (("min","Min"),("avg","Avg"),("max","Max")):
-        table.append([key] + data[param])
-    push("/view/robot/"+robot, "update_stats", json.dumps(table))
-
-def match_redo(num, schedule, act, score):
-    teams = schedule[num]
-    result = {"num":num, "score":score, "data":[ [teams[i],act[i][0],act[i][1]] for i in range(6)]}
-    return result
-
-def match_onchange(match_data):
-    scores = match_data["score"]
-    teams = match_data["data"]
-    fields = {}
-    for i in range(6):
-        fields["robot-"+str(i)] = teams[i][0]
-        fields["score-"+str(i)] = scores[i]
-    fields["Red_score_total"] = scores[0]+scores[1]+scores[2]
-    fields["Blue_score_total"] = scores[3]+scores[4]+scores[5]
-
-    cast("/view/match/" + match_data["num"], **fields)
+    text = csvify(table)
+    with open(save_path, "w") as f:
+        f.write(text)
+    return this
 
 # control / interface
 
-def mk_match(num, store):
-    actnode = Node(actions_redo, actions_onchange)
-    scorenode = Node(score_redo, score_onchange)
-    synthnode = Node(match_redo, match_onchange, [constNode(num), schedule_node, actnode, scorenode])
 
-    actnode.data = dictrip(store, [["A0","S0"],["A1","S1"],["A2","S2"],["A3","S3"],["A4","S4"],["A5","S5"]])
-    scorenode.data = forceints(dictrip(store, ["RedAuto","RedTele","RedFoul","BlueAuto","BlueTele","BlueFoul"]))
+def load():
+    rsc = raw_schedule()
+    sc = schedule()
+    schedule_page()
 
-    matches[num] = (actnode, scorenode, synthnode)
+    if os.path.exists(save_path):
+        with open(save_path) as f:
+            array = readcsv(f.read())[1:]
+
+        rscd = []
+        for row in array:
+            store = dict(zip(Store.header, row))
+            num = store[Store.match]
+
+            teams = [num] + \
+                dictrip(store, ["T0", "T1", "T2", "T3", "T4", "T5"])
+            rscd.append(teams)
+
+            act_struct = [["A0", "S0"], ["A1", "S1"], ["A2", "S2"], [
+                "A3", "S3"], ["A4", "S4"], ["A5", "S5"]]
+            score_struct = [
+                "RedAuto", "RedTele", "RedFoul", "BlueAuto", "BlueTele", "BlueFoul"]
+
+            raw_actions(num).modify(dictrip(store, act_struct))
+            raw_score(num).modify(forceints(dictrip(store, score_struct)))
+            match(num)
+
+        rsc.modify(rscd)
+
+    link.clean()
+    save()
+
 
 class Store():
     scores = "RedAuto, RedTele, RedFoul, BlueAuto, BlueTele, BlueFoul".split(
@@ -173,123 +245,105 @@ class Store():
     def __init__(self, path, year_funcs, push_data):
         global push
         global year
-        global save_data
+        global save_path
         year = year_funcs
         push = push_data
-        save_data = lambda: self.save()
-        self.path = path + "/data"
-        self.load()
-    def save(self):
-        # write all the data bound in the matches
-        table = [Store.header]
-        for k in sorted(matches.keys()):
-            d = matches[k][2].data
-            group = [k] + d["score"] + flatten(d["data"])
-            table.append(group)
-
-        with open(self.path, "w") as f:
-            writer = csv.writer(f)
-            for r in table:
-                writer.writerow(r)
-
-    def load(self):
-        global schedule_node
-        schedule_node = Node(schedule_redo, schedule_onchange)
-        schedule_data = []
-
-        if os.path.exists(self.path):
-            with open(self.path) as f:
-                array = readcsv(f.read())[1:]
-
-            for row in array:
-                store = dict(zip(Store.header, row))
-                num = store[Store.match]
-                mk_match(num, store)
-                teams = [num] + dictrip(store, ["T0","T1","T2","T3","T4","T5"])
-                schedule_data.append(teams)
-
-        # side effect: forms, creates all the robots
-        schedule_node.update(schedule_data)
+        save_path = path + "/data"
+        load()
 
     sched_header = ["Match", "Red1", "Red2", "Red3", "Blue1", "Blue2", "Blue3"]
 
     def get_schedule(self):
-        return schedule_to_array(schedule_node.data)
+        return schedule_to_array(schedule().state[0])
 
     def update_schedule(self, text_csv):
         blk = readcsv(text_csv)
         if not blk:
-            print("empty")
+            push_schedule_page(schedule().state[0])
             return
         trim = len(Store.sched_header)
         if blk[0] != Store.sched_header:
-            print("invalid data")
+            push_schedule_page(schedule().state[0])
             return
 
         res = [u[:trim] for u in blk[1:]]
+        if res != blk[1:] and res == raw_schedule().state:
+            push_schedule_page(schedule().state[0])
+            return
 
-        schedule_node.update(res)
-        save_data()
+        raw_schedule().modify(res)
+        link.clean()
 
     def reset_schedule(self):
         print("No reset allowed")
-        push("/input/schedule","message","Yo!")
+        push("/input/schedule", "message", "Yo!")
 
     def get_match_list(self):
-        return get_match_list()
+        return sorted(schedule().state[0].keys())
+
     def get_robot_list(self):
-        return get_robot_list()
+        return sorted(schedule().state[1].keys())
 
-    def get_scouter(self, match, spot):
-        if match not in matches:
-            return ""
-        return matches[match][0].data[spot][1]
-    def get_actions(self, match, spot):
-        if match not in matches:
-            return ""
-        return matches[match][0].data[spot][0]
-    def get_team(self, match, spot):
-        if match not in schedule_node.data:
-            return ""
-        return schedule_node.data[match][spot]
-    def set_actions(self, match, spot, val):
-        if match not in matches:
+    no_match = " "
+
+    def get_scouter(self, mtc, spot):
+        if mtc != Store.no_match:
+            return match(mtc).state["scouters"][spot]
+        return ""
+
+    def get_actions(self, mtc, spot):
+        if mtc != Store.no_match:
+            return match(mtc).state["actions"][spot]
+        return ""
+
+    def get_team(self, mtc, spot):
+        if mtc != Store.no_match:
+            return schedule().state[0][mtc][spot]
+        return "????"
+
+    def set_actions(self, mtc, spot, val):
+        if mtc == Store.no_match:
             return
-        sector = deepcopy(matches[match][0].data)
-        sector[spot][0] = val
-        matches[match][0].update(sector)
-        save_data()
-    def set_scouter(self, match, spot, val):
-        if match not in matches:
+        e = raw_actions(mtc)
+        e.state[spot][0] = val
+        e.modify()
+        link.clean()
+
+    def set_scouter(self, mtc, spot, val):
+        if mtc == Store.no_match:
             return
-        sector = deepcopy(matches[match][0].data)
-        sector[spot][1] = val
-        matches[match][0].update(sector)
-        save_data()
+        e = raw_actions(mtc)
+        e.state[spot][1] = val
+        e.modify()
+        link.clean()
 
-    def get_scores(self, match):
-        if match not in matches:
-            return [0,0,0,0,0,0]
-        return matches[match][1].data
-    def set_score(self, match, item, val):
-        sector = deepcopy(matches[match][1].data)
-        sector[item] = val
-        matches[match][1].update(sector)
-        save_data()
+    def get_scores(self, mtc):
+        return raw_score(mtc).state
 
-    def robot_exists(self, robot):
-        return robot in robots
-    def match_exists(self, match):
-        return match in matches
+    def set_score(self, mtc, item, val):
+        e = raw_score(mtc)
+        e.state[item] = val
+        e.modify()
+        link.clean()
 
-    def get_matches(self, robot):
-        return sorted(robots[robot].data[1].keys())
+    def robot_exists(self, rbt):
+        return (rbt,) in link.list(robot)
+
+    def match_exists(self, mtc):
+        return (mtc,) in link.list(match)
+
+    def get_matches(self, rbt):
+        return [x[0] for x in sorted(robot(rbt).state.keys())]
 
     def get_robot_match_header(self):
         return year.get_robot_match_header()
-    def get_robot_match_results(self, robot, match):
-        return year.get_robot_match_results(robots[robot].data[1],robot, match)
+
+    def get_robot_match_results(self, rbt, mtc):
+        return year.get_robot_match_results(
+            robot(rbt).state, rbt, mtc)
+
     def get_robot_stats_header(self):
         return year.get_robot_stats_header()
-    def get_robot_stats_results(self, robot):
-        return year.get_robot_stats_results(robots[robot].data[1], robot)
+
+    def get_robot_stats_results(self, rbt):
+        return year.get_robot_stats_results(robot(rbt).state, rbt)
