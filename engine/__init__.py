@@ -6,6 +6,7 @@ import json
 import importlib
 from .data import Store
 from .common import *
+from tornado.escape import url_escape
 
 
 class Config():
@@ -37,6 +38,21 @@ def wrap_to_engine(f):
     def g(self, *x, **y):
         return f(*x, **y)
     return g
+
+
+def array_hyperlink(table, affected_lambda, formatstring):
+    """
+    affected_lambda takes two arguments: x and y.
+    X increases right, Y down. Both start at 0.
+    """
+    metaformatstring = "<a href={}>{}</a>"
+
+    def convert(v, x, y):
+        if affected_lambda(x, y):
+            return metaformatstring.format(url_escape(formatstring.format(v), plus=False), v)
+        return v
+
+    return [[convert(table[y][x], x, y) for x in range(len(table[y]))] for y in range(len(table))]
 
 
 class Engine():
@@ -75,6 +91,7 @@ class Engine():
     csvify = wrap_to_engine(csvify)
     tablify = wrap_to_engine(tablify)
     surround_list = wrap_to_engine(surround_list)
+    array_hyperlink = wrap_to_engine(array_hyperlink)
 
     def receive(self, page, key, val):
         """

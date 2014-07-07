@@ -23,7 +23,8 @@ pass_map = {
     "input/match",
     "input/pits",
     "input/actions",
-    "view/stats"
+    "view/stats",
+    "view/rankings"
 }
 
 number_pages = {
@@ -32,9 +33,7 @@ number_pages = {
 }
 
 re_map = {
-    "": "index",
-    "view": "view/index",
-    "input": "input/index",
+    "": "index"
 }
 
 
@@ -62,7 +61,7 @@ class TemplateHandler(web.RequestHandler):
             r = path.rstrip("/")
             if r in re_map:
                 if r != path:
-                    self.redirect("/"+r)
+                    self.redirect("/" + r)
                     return
                 else:
                     real = re_map[r]

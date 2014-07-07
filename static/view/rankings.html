@@ -1,0 +1,46 @@
+{% extends "../base.html" %}
+{% block title %} Rankings {% end %}
+{% block body %}
+
+<h3> Robot Performance </h3>
+
+<table id="combined">
+
+{% set data = engine.data.get_robot_rankings_table() %}
+{{ engine.tablify(engine.array_hyperlink(data, lambda x,y: y > 0 and x % 2 == 1, "/view/robot/{}"))  }}
+
+</table>
+
+<script>
+
+"use strict"
+
+// yet another table clone.
+
+pull("update_rankings", function(e) {
+   var arr= JSON.parse(e);
+   var table = document.getElementById("combined");
+   table.innerHTML = "";
+
+   for (var y=0;y<arr.length;y++) {
+        var row = arr[y];
+        var rn = document.createElement("tr");
+        for (var x=0;x<row.length;x++) {
+            var blk = document.createElement("td");
+
+            if (x % 2 == 1 && y > 0) {
+                blk.innerHTML = "<a href='/view/robot/"+row[x]+"'>"+row[x]+"</a>";
+            } else {
+                blk.innerHTML = row[x];
+            }
+
+
+            rn.appendChild(blk);
+        }
+        table.appendChild(rn);
+   }
+});
+
+</script>
+
+{% end %}

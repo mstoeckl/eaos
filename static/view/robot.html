@@ -5,50 +5,20 @@
 <h3> Matches </h3>
 
 <table id="matches">
-<tr>
-<td>Match</td>
 
 {% set tdify = lambda u: engine.surround_list(u, "td") %}
+{% set table = engine.data.get_robot_match_table(page) %}
 
-{{ tdify(engine.data.get_robot_match_header()) }}
+{{ engine.tablify(engine.array_hyperlink(table, lambda x,y: x == 0 and y >= 1, "/view/match/{}")) }}
 
-</tr>
-
-{% for match in engine.data.get_matches(page) %}
-<tr>
-<td><a href="/view/match/{{match}}">{{match}}</a></td>
-
-{{ tdify(engine.data.get_robot_match_results(page, match)) }}
-
-</tr>
-{% end %}
 </table>
 
 <h3> Statistics </h3>
 <table id="stats">
-<tr>
-<td>Statistic</td>
-{{tdify(engine.data.get_robot_stats_header())}}
-</tr>
-{% set stats = engine.data.get_robot_stats_results(page) %}
-<tr>
-<td>Min</td>
-{{tdify(stats["min"])}}
-</tr>
-<tr>
-<td>Avg</td>
-{{tdify(stats["avg"])}}
-</tr>
-<tr>
-<td>Max</td>
-{{tdify(stats["max"])}}
-</tr>
+{{ engine.tablify(engine.data.get_robot_stats_table(page)) }}
 </table>
 
 <script>
-
-// probably the heaviest site of the page:
-// load stats, images, etc...
 
 "use strict"
 

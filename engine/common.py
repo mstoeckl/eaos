@@ -2,11 +2,6 @@ import csv
 import io
 
 
-def tablify(array):
-    rt = lambda row: "<td>" + "</td><td>".join(map(str, row)) + "</td>"
-    return "<tr>" + "</tr><tr>".join(map(rt, array)) + "</tr>"
-
-
 def readcsv(string):
     reader = csv.reader(string.split("\n"))
     return [list(map(lambda u:u.strip(), row)) for row in reader if row]
@@ -23,7 +18,12 @@ def csvify(array):
 def surround_list(li, tag):
     pre = "<{}>".format(tag)
     post = "</{}>".format(tag)
-    return pre + (post + pre).join(map(str, li)) + post
+    return "".join(pre + str(e) + post for e in li)
+
+
+def tablify(array):
+    rt = lambda row: "<td>" + "</td><td>".join(map(str, row)) + "</td>"
+    return surround_list(map(rt, array), "tr")
 
 
 def metapply(func, group):
@@ -60,3 +60,7 @@ def flatten(structure):
         else:
             g.append(x)
     return g
+
+
+def transpose(array):
+    return [[array[x][y] for x in range(len(array))] for y in range(len(array[0]))]

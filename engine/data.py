@@ -61,6 +61,7 @@ def schedule(vector, this, raw_schedule=0):
 
     for team in old_idx.keys() - new_idx.keys():
         robot_page(team).delete()
+        robot_analysis(team).delete()
         robot(team).delete()
         push("/view/robot/" + team, "destroy", "")
 
@@ -68,6 +69,7 @@ def schedule(vector, this, raw_schedule=0):
         r = robot(team)
         for mtc in new_idx[team]:
             r.add(match, (mtc,))
+        robot_analysis(team)
         robot_page(team)
 
     for team in new_idx.keys() & old_idx.keys():
@@ -92,8 +94,6 @@ def schedule(vector, this, raw_schedule=0):
 
     return new, new_idx
 
-    print("schedule received {}...{}".format(
-        raw_schedule[:1], raw_schedule[-1:]))
     return not this
 
 
@@ -110,7 +110,62 @@ def match(vector, this, schedule=0, raw_actions=0, raw_score=0):
 
 @link(dim=1, dependencies={match: link.vary})
 def robot(vector, this, match=0):
+    """
+    Node for actual robot data
+    """
     return match
+
+
+@link(dim=1, dependencies={robot: link.match})
+def robot_analysis(vector, this, robot=0):
+    """
+    Do individual performance metrics on da robot. Year-specific
+    """
+    rbt = vector[0]
+
+    matches = {k[0]: year.match_attributes(
+        rbt, k[0], v) for k, v in robot.items()}
+
+    example = matches[list(robot.keys())[0][0]]
+
+    def is_sortable(pair):
+        return isinstance(pair[1], (float, int))
+    numeric = [i for i in range(len(example)) if is_sortable(example[i])]
+
+    mma = []
+    for idx in numeric:
+        fields = [val[idx][1] for val in matches.values()]
+        mma.append((example[idx][0], {
+                   "min": min(fields), "max": max(fields), "avg": sum(fields) / len(fields)}))
+
+    return {"matches": matches, "mma": mma}
+
+
+@link(dim=0, dependencies={robot_analysis: link.all})
+def rankings(vector, this, robot_analysis=0):
+    """
+    Aggregate statistics about all the robots. Order, slice, stack
+    them.
+    """
+
+    # TODO: link.all classes must be executed after every other dependency
+    if not all(robot_analysis.values()):  # temp hack to fix this
+        return None
+
+    rbts = sorted(list(robot_analysis.keys()))
+    fields = list(f[0] for f in robot_analysis[rbts[0]]["mma"])
+
+    table = [["Rank"] + list(range(1, len(rbts) + 1))]
+    for i in range(len(fields)):
+        values = [(k[0], v["mma"][i][1]["avg"])
+                  for k, v in robot_analysis.items()]
+        s = sorted(values, key=lambda pair: (pair[1], pair[0]), reverse=True)
+        table.append([fields[i]] + [x[0] for x in s])
+        table.append([""] + [x[1] for x in s])
+
+    reverse = {}  # teams -> keys -> (rank, value)
+
+    return transpose(table), reverse
 
 # OUTERWARE
 
@@ -132,23 +187,49 @@ def match_page(vector, this, match=0):
     return this
 
 
-@link(dim=1, dependencies={robot: link.match})
-def robot_page(vector, this, robot=0):
+def cleaned(value):
+    if isinstance(value, list):
+        return surround_list(value, "div")
+    if isinstance(value, float):
+        return str(round(value, 2))
+    return value
+
+
+@link(dim=1, dependencies={robot_analysis: link.match})
+def robot_page(vector, this, robot_analysis=0):
     """ Robot page, & analysis """
+
     rbt = vector[0]
-    match_table = [["Match"] + year.get_robot_match_header()]
-    for mtc in sorted(robot.keys()):
-        match_table.append(
-            [mtc[0]] + year.get_robot_match_results(robot, rbt, mtc[0]))
+
+    matches = robot_analysis["matches"]
+    match_table = []
+    for mtc in sorted(matches.keys()):
+        match_table.append([mtc] + [cleaned(pair[1]) for pair in matches[mtc]])
+    example = matches[mtc]
+    match_table = [["Match"] + [pair[0] for pair in example]] + match_table
 
     push("/view/robot/" + rbt, "update_matches", json.dumps(match_table))
 
-    stats_table = [["Statistic"] + year.get_robot_stats_header()]
-    data = year.get_robot_stats_results(robot, rbt)
-    for param, key in (("min", "Min"), ("avg", "Avg"), ("max", "Max")):
-        stats_table.append([key] + data[param])
+    mma = robot_analysis["mma"]
+    stats_table = [["Statistic", "Minimum", "Average", "Maximum"]]
+    for name, results in mma:
+        stats_table.append(
+            [name, cleaned(results["min"]), cleaned(results["avg"]), cleaned(results["max"])])
+
     push("/view/robot/" + rbt, "update_stats", json.dumps(stats_table))
+
     return match_table, stats_table
+
+
+@link(dim=0, dependencies={rankings: link.only})
+def rankings_page(vector, this, rankings=0):
+    # push to rankings page!
+    table = rankings[0]
+    # clean it all
+    table = [[cleaned(v) for v in row] for row in table]
+
+    push("/view/rankings", "update_rankings", json.dumps(table))
+    return table
 
 
 def schedule_to_array(dct):
@@ -162,7 +243,7 @@ def schedule_to_array(dct):
 def push_schedule_page(matches):
     arr = schedule_to_array(matches)
     # TODO: just push it in JSON format, have page deserialize. One control
-    # point!
+    # point! Easier for other clients!
     push("/input/schedule", "csv_entry", csvify(arr))
     push("/input/schedule", "csv_table", tablify(arr))
 
@@ -204,6 +285,8 @@ def load():
     rsc = raw_schedule()
     sc = schedule()
     schedule_page()
+    rankings()
+    rankings_page()
 
     if os.path.exists(save_path):
         with open(save_path) as f:
@@ -335,15 +418,11 @@ class Store():
     def get_matches(self, rbt):
         return [x[0] for x in sorted(robot(rbt).state.keys())]
 
-    def get_robot_match_header(self):
-        return year.get_robot_match_header()
+    def get_robot_stats_table(self, robot):
+        return robot_page(robot).state[1]
 
-    def get_robot_match_results(self, rbt, mtc):
-        return year.get_robot_match_results(
-            robot(rbt).state, rbt, mtc)
+    def get_robot_match_table(self, robot):
+        return robot_page(robot).state[0]
 
-    def get_robot_stats_header(self):
-        return year.get_robot_stats_header()
-
-    def get_robot_stats_results(self, rbt):
-        return year.get_robot_stats_results(robot(rbt).state, rbt)
+    def get_robot_rankings_table(self):
+        return rankings_page().state
