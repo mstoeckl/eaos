@@ -63,18 +63,22 @@ class link():
     """
     _table = {}
     """
-    The dirty list. Bad node.
+    The dirty table. Contains type=set-of-instances pairs
     """
-    _dirty = set()
+    _dirty = {}
     """
     Type based class-selectors capture all class-elements.
     """
     _typehooks = {}
-
     """
     Type lookup.
     """
     _types = {}
+    """
+    Order of resolution for types, with the low-level nodes
+    first.
+    """
+    _resolution_order = []
 
     class _proxy():
 
@@ -95,9 +99,11 @@ class link():
             link._table[name] = {}
             link._typehooks[name] = set()
             link._types[name] = self
+            link._resolution_order.append(self)
+            link._dirty[name] = set()
 
-        def __hash__(self):
-            return id(self)
+        #def __hash__(self):
+            #return id(self)
 
         def __repr__(self):
             return "<proxy:{}>".format(self.func.__name__)
@@ -198,7 +204,7 @@ class link():
 
             Returns self for chaining.
             """
-            link._dirty.add(self)
+            link._dirty[self.func.__name__].add(self)
             return self
 
         in_place = sentinel("in_place")
@@ -213,7 +219,7 @@ class link():
             if new_state is not link._instance.in_place:
                 self.state = new_state
             for element in self.get_downstream_dependencies():
-                link._dirty.add(element)
+                link._dirty[element.func.__name__].add(element)
 
             return self
 
@@ -382,26 +388,13 @@ class link():
         Once. Once. Update.
         """
         # run the cleaning algorithm!
-        dirty = link._dirty
-        while dirty:
-            # find a root node
-            node = next(iter(dirty))
-
-            impure = True
-            while impure:
-                impure = False
-                for dep in node.get_upstream_dependencies():
-                    if dep in dirty:
-                        node = dep
-                        impure = True
-                        break
-
-            dirty.remove(node)
-
-            # inputs must be in dependency order...
-            if node(**node.get_upstream_data()):
-                for cont in node.get_downstream_dependencies():
-                    dirty.add(cont)
+        for proxy in link._resolution_order:
+            segment = link._dirty[proxy.func.__name__]
+            while segment:
+                node = segment.pop()
+                if node(**node.get_upstream_data()):
+                    for cont in node.get_downstream_dependencies():
+                        link._dirty[cont.func.__name__].add(cont)
 
     @staticmethod
     def list(proxy_type):

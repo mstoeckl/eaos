@@ -8,7 +8,7 @@ from . node import link
 from . common import *
 
 year = None
-push = None
+push = lambda *x,**y:None
 save_path = None
 
 # helpers
@@ -147,11 +147,6 @@ def rankings(vector, this, robot_analysis=0):
     Aggregate statistics about all the robots. Order, slice, stack
     them.
     """
-
-    # TODO: link.all classes must be executed after every other dependency
-    if not all(robot_analysis.values()):  # temp hack to fix this
-        return None
-
     rbts = sorted(list(robot_analysis.keys()))
     fields = list(f[0] for f in robot_analysis[rbts[0]]["mma"])
 
@@ -330,9 +325,9 @@ class Store():
         global year
         global save_path
         year = year_funcs
-        push = push_data
         save_path = path + "/data"
         load()
+        push = push_data
 
     sched_header = ["Match", "Red1", "Red2", "Red3", "Blue1", "Blue2", "Blue3"]
 
